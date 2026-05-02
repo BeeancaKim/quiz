@@ -1,0 +1,764 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { BookOpen, CheckCircle, XCircle, RefreshCw, ChevronRight, AlertCircle, PlayCircle, LogOut, Bookmark, Layers, MoveRight, MoveLeft, Hand } from 'lucide-react';
+
+// --- 1. 데이터베이스 구축 ---
+const wordData = [
+  { word: "각골난망", hanja: "刻骨難忘", meaning: "남에게 입은 은혜가 뼈에 새길 만큼 커서 잊히지 아니함.", blankQuestion: "남에게 입은 [   ]가 뼈에 새길 만큼 커서 잊히지 아니함.", blankAnswer: "은혜", hint: "새길 각, 뼈 골, 어려울 난, 잊을 망" },
+  { word: "각주구검", hanja: "刻舟求劍", meaning: "융통성 없이 현실에 맞지 않는 낡은 생각을 고집하는 어리석음을 이르는 말.", blankQuestion: "[   ] 없이 현실에 맞지 않는 낡은 생각을 고집하는 어리석음을 이르는 말.", blankAnswer: "융통성", hint: "새길 각, 배 주, 구할 구, 칼 검" },
+  { word: "간난신고", hanja: "艱難辛苦", meaning: "몹시 힘들고 어려우며 고생스러움.", blankQuestion: "몹시 힘들고 어려우며 [   ]스러움.", blankAnswer: "고생", hint: "어려울 간, 어려울 난, 매울 신, 쓸 고" },
+  { word: "감탄고토", hanja: "甘吞苦吐", meaning: "달면 삼키고 쓰면 뱉는다는 뜻으로, 자신의 비위에 따라서 사리의 옳고 그름을 판단함을 이르는 말.", blankQuestion: "자신의 [   ]에 따라서 사리의 옳고 그름을 판단함을 이르는 말.", blankAnswer: "비위", hint: "달 감, 삼킬 탄, 쓸 고, 토할 토" },
+  { word: "견리사의", hanja: "見利思義", meaning: "눈앞의 이익을 보면 의리를 먼저 생각함.", blankQuestion: "눈앞의 이익을 보면 [   ]를 먼저 생각함.", blankAnswer: "의리", hint: "볼 견, 이로울 리, 생각할 사, 옳을 의" },
+  { word: "경거망동", hanja: "輕舉妄動", meaning: "경솔하여 생각 없이 망령되게 행동함. 또는 그런 행동.", blankQuestion: "경솔하여 생각 없이 [   ]되게 행동함.", blankAnswer: "망령", hint: "가벼울 경, 들 거, 망령될 망, 움직일 동" },
+  { word: "경이원지", hanja: "敬而遠之", meaning: "겉으로는 공경하는 체하면서 실제로는 꺼리어 멀리함.", blankQuestion: "겉으로는 공경하는 체하면서 실제로는 꺼리어 [   ]함.", blankAnswer: "멀리", hint: "공경할 경, 말이을 이, 멀 원, 갈 지" },
+  { word: "고육지계", hanja: "苦肉之計", meaning: "어려운 상태를 벗어나기 위해 어쩔 수 없이 꾸며 내는 계책을 이르는 말.", blankQuestion: "어려운 상태를 벗어나기 위해 [   ] 없이 꾸며 내는 계책.", blankAnswer: "어쩔 수", hint: "쓸 고, 고기 육, 갈 지, 꾀 계" },
+  { word: "과대망상", hanja: "誇大妄想", meaning: "사실보다 과장하여 터무니없는 헛된 생각을 하는 증상.", blankQuestion: "사실보다 [   ]하여 터무니없는 헛된 생각을 하는 증상.", blankAnswer: "과장", hint: "자랑할 과, 클 대, 망령될 망, 생각 상" },
+  { word: "궁여지책", hanja: "窮餘之策", meaning: "궁한 나머지 생각다 못하여 짜낸 계책.", blankQuestion: "궁한 나머지 생각다 못하여 짜낸 [   ].", blankAnswer: "계책", hint: "다할 궁, 남을 여, 갈 지, 꾀 책" },
+  { word: "권토중래", hanja: "捲土重來", meaning: "어떤 일에 실패한 뒤에 힘을 가다듬어 다시 그 일에 착수함을 비유하여 이르는 말.", blankQuestion: "어떤 일에 실패한 뒤에 힘을 가다듬어 [   ] 그 일에 착수함.", blankAnswer: "다시", hint: "말 권, 흙 토, 무거울 중, 올 래" },
+  { word: "기호지세", hanja: "騎虎之勢", meaning: "이미 시작한 일을 중도에서 그만둘 수 없는 경우를 비유적으로 이르는 말.", blankQuestion: "이미 시작한 일을 [   ]에서 그만둘 수 없는 경우를 비유.", blankAnswer: "중도", hint: "말탈 기, 범 호, 갈 지, 형세 세" },
+  { word: "남가일몽", hanja: "南柯一夢", meaning: "꿈과 같이 헛된 한때의 부귀영화를 이르는 말.", blankQuestion: "꿈과 같이 헛된 한때의 [   ]를 이르는 말.", blankAnswer: "부귀영화", hint: "남녘 남, 나뭇가지 가, 한 일, 꿈 몽" },
+  { word: "내우외환", hanja: "內憂外患", meaning: "나라 안팎의 여러 가지 어려움.", blankQuestion: "나라 안팎의 여러 가지 [   ].", blankAnswer: "어려움", hint: "안 내, 근심 우, 바깥 외, 근심 환" },
+  { word: "누란지세", hanja: "累卵之勢", meaning: "층층이 쌓아 놓은 알의 형세라는 뜻으로, 몹시 위태로운 형세를 비유적으로 이르는 말.", blankQuestion: "층층이 쌓아 놓은 알의 형세라는 뜻으로, 몹시 [   ] 형세를 비유.", blankAnswer: "위태로운", hint: "포갤 누, 알 란, 갈 지, 형세 세" },
+  { word: "누란지위", hanja: "累卵之危", meaning: "층층이 쌓아 놓은 알의 위태로움이라는 뜻으로, 몹시 아슬아슬한 위기를 비유적으로 이르는 말.", blankQuestion: "층층이 쌓아 놓은 알의 위태로움이라는 뜻으로, 몹시 아슬아슬한 [   ]를 비유.", blankAnswer: "위기", hint: "포갤 누, 알 란, 갈 지, 위태할 위" },
+  { word: "등화가친", hanja: "燈火可親", meaning: "가을 밤은 시원하고 상쾌하므로 등불을 가까이 하여 글 읽기에 좋음을 이르는 말.", blankQuestion: "등불을 가까이 하여 [   ]에 좋음을 이르는 말.", blankAnswer: "글 읽기", hint: "등불 등, 불 화, 가할 가, 친할 친" },
+  { word: "동병상련", hanja: "同病相憐", meaning: "어려운 처지에 있는 사람끼리 서로 가엾게 여김을 이르는 말.", blankQuestion: "어려운 처지에 있는 사람끼리 서로 [   ]게 여김을 이르는 말.", blankAnswer: "가엾", hint: "같을 동, 병 병, 서로 상, 불쌍히여길 련" },
+  { word: "만고풍상", hanja: "萬古風霜", meaning: "아주 오랜 세월 동안 겪어 온 많은 고생.", blankQuestion: "아주 오랜 세월 동안 겪어 온 많은 [   ].", blankAnswer: "고생", hint: "일만 만, 옛 고, 바람 풍, 서리 상" },
+  { word: "만시지탄", hanja: "晚時之歎", meaning: "시기에 늦어 기회를 놓쳤음을 안타까워하는 탄식.", blankQuestion: "시기에 늦어 기회를 놓쳤음을 안타까워하는 [   ].", blankAnswer: "탄식", hint: "늦을 만, 때 시, 갈 지, 탄식할 탄" },
+  { word: "맥수지탄", hanja: "麥秀之嘆", meaning: "고국의 멸망을 한탄함을 이르는 말.", blankQuestion: "고국의 [   ]을 한탄함을 이르는 말.", blankAnswer: "멸망", hint: "보리 맥, 빼어날 수, 갈 지, 탄식할 탄" },
+  { word: "면종복배", hanja: "面從腹背", meaning: "겉으로는 복종하는 체하면서 내심으로는 배반함.", blankQuestion: "겉으로는 복종하는 체하면서 내심으로는 [   ]함.", blankAnswer: "배반", hint: "낯 면, 좇을 종, 배 복, 등 배" },
+  { word: "반대급부", hanja: "反對給付", meaning: "어떤 일에 대응하여 얻게 되는 이익.", blankQuestion: "어떤 일에 대응하여 얻게 되는 [   ].", blankAnswer: "이익", hint: "돌이킬 반, 대할 대, 줄 급, 줄 부" },
+  { word: "배수지진", hanja: "背水之陣", meaning: "어떤 일을 성취하기 위하여 더 이상 물러설 수 없음을 비유적으로 이르는 말.", blankQuestion: "어떤 일을 성취하기 위하여 더 이상 [   ] 수 없음을 비유적으로 이르는 말.", blankAnswer: "물러설", hint: "등 배, 물 수, 갈 지, 진 칠 진" },
+  { word: "배은망덕", hanja: "背恩忘德", meaning: "남에게 입은 은덕을 저버리고 배신하는 태도가 있음.", blankQuestion: "남에게 입은 은덕을 저버리고 [   ]하는 태도가 있음.", blankAnswer: "배신", hint: "등 배, 은혜 은, 잊을 망, 큰덕 덕" },
+  { word: "백골난망", hanja: "白骨難忘", meaning: "죽어서 백골이 되어도 잊을 수 없다는 뜻으로, 남에게 큰 은덕을 입었을 때 고마움의 뜻으로 이르는 말.", blankQuestion: "남에게 큰 [   ]을 입었을 때 고마움의 뜻으로 이르는 말.", blankAnswer: "은덕", hint: "흰 백, 뼈 골, 어려울 난, 잊을 망" },
+  { word: "백년하청", hanja: "百年河淸", meaning: "아무리 오랜 시일이 지나도 어떤 일이 이루어지기 어려움을 이르는 말.", blankQuestion: "아무리 오랜 시일이 지나도 어떤 일이 이루어지기 [   ]을 이르는 말.", blankAnswer: "어려움", hint: "일백 백, 해 년, 물 하, 맑을 청" },
+  { word: "백척간두", hanja: "百尺竿頭", meaning: "몹시 어렵고 위태로운 지경을 이르는 말.", blankQuestion: "몹시 어렵고 [   ] 지경을 이르는 말.", blankAnswer: "위태로운", hint: "일백 백, 자 척, 장대 간, 머리 두" },
+  { word: "부화뇌동", hanja: "附和雷同", meaning: "줏대 없이 남의 의견에 따라 움직임.", blankQuestion: "[   ] 없이 남의 의견에 따라 움직임.", blankAnswer: "줏대", hint: "붙을 부, 화할 화, 우레 뢰, 한가지 동" },
+  { word: "비분강개", hanja: "悲憤慷慨", meaning: "슬프고 분하여 의분이 북받침.", blankQuestion: "슬프고 분하여 [   ]이 북받침.", blankAnswer: "의분", hint: "슬플 비, 분할 분, 강개할 강, 강개할 개" },
+  { word: "사고무친", hanja: "四顧無親", meaning: "의지할 만한 사람이 아무도 없음.", blankQuestion: "[   ]할 만한 사람이 아무도 없음.", blankAnswer: "의지", hint: "넉 사, 돌아볼 고, 없을 무, 친할 친" },
+  { word: "사면초가", hanja: "四面楚歌", meaning: "아무에게도 도움을 받지 못하는, 외롭고 곤란한 지경에 빠진 형편을 이르는 말.", blankQuestion: "아무에게도 도움을 받지 못하는, 외롭고 [   ] 지경에 빠진 형편.", blankAnswer: "곤란한", hint: "넉 사, 낮 면, 초나라 초, 노래 가" },
+  { word: "사생취의", hanja: "捨生取義", meaning: "목숨을 버릴지언정 옳은 일을 함을 이르는 말.", blankQuestion: "목숨을 버릴지언정 [   ]을 함을 이르는 말.", blankAnswer: "옳은 일", hint: "버릴 사, 날 생, 취할 취, 옳을 의" },
+  { word: "살신성인", hanja: "殺身成仁", meaning: "자기의 몸을 희생하여 인(仁)을 이룸.", blankQuestion: "자기의 몸을 [   ]하여 인(仁)을 이룸.", blankAnswer: "희생", hint: "죽일 살, 몸 신, 이룰 성, 어질 인" },
+  { word: "삼고초려", hanja: "三顧草廬", meaning: "인재를 맞아들이기 위하여 참을성 있게 노력함.", blankQuestion: "[   ]를 맞아들이기 위하여 참을성 있게 노력함.", blankAnswer: "인재", hint: "석 삼, 돌아볼 고, 풀 초, 농막집 려" },
+  { word: "새옹지마", hanja: "塞翁之馬", meaning: "인생의 길흉화복은 변화가 많아서 예측하기가 어렵다는 말.", blankQuestion: "인생의 [   ]은/는 변화가 많아서 예측하기가 어렵다는 말.", blankAnswer: "길흉화복", hint: "변방 새, 늙은이 옹, 갈 지, 말 마" },
+  { word: "설상가상", hanja: "雪上加霜", meaning: "눈 위에 서리가 덮인다는 뜻으로, 난처한 일이나 불행한 일이 잇따라 일어남.", blankQuestion: "난처한 일이나 불행한 일이 [   ] 일어남.", blankAnswer: "잇따라", hint: "눈 설, 위 상, 더할 가, 서리 상" },
+  { word: "수구초심", hanja: "首丘初心", meaning: "여우가 죽을 때에 머리를 굴 쪽으로 둔다는 뜻으로, 고향을 그리워하는 마음.", blankQuestion: "여우가 죽을 때 고향을 그리워하는 [   ].", blankAnswer: "마음", hint: "머리 수, 언덕 구, 처음 초, 마음 심" },
+  { word: "시시비비", hanja: "是是非非", meaning: "옳고 그름을 따지며 다툼.", blankQuestion: "옳고 [   ]을 따지며 다툼.", blankAnswer: "그름", hint: "옳을 시, 옳을 시, 아닐 비, 아닐 비" },
+  { word: "식자우환", hanja: "識字憂患", meaning: "학식이 있는 것이 오히려 근심을 사게 됨.", blankQuestion: "학식이 있는 것이 오히려 [   ]을 사게 됨.", blankAnswer: "근심", hint: "알 식, 글자 자, 근심 우, 근심 환" },
+  { word: "십시일반", hanja: "十匙一飯", meaning: "여러 사람이 조금씩 힘을 합하면 한 사람을 돕기 쉬움을 이르는 말.", blankQuestion: "여러 사람이 조금씩 힘을 합하면 한 사람을 [   ] 쉬움을 이르는 말.", blankAnswer: "돕기", hint: "열 십, 숟가락 시, 한 일, 밥 반" },
+  { word: "아전인수", hanja: "我田引水", meaning: "자기에게만 이롭게 되도록 생각하거나 행동함을 이르는 말.", blankQuestion: "자기에게만 [   ] 되도록 생각하거나 행동함.", blankAnswer: "이롭게", hint: "나 아, 밭 전, 끌 인, 물 수" },
+  { word: "안하무인", hanja: "眼下無人", meaning: "눈 아래에 사람이 없다는 뜻으로, 방자하고 교만하여 다른 사람을 업신여김을 이르는 말.", blankQuestion: "방자하고 교만하여 다른 사람을 [   ]을 이르는 말.", blankAnswer: "업신여김", hint: "눈 안, 아래 하, 없을 무, 사람 인" },
+  { word: "어부지리", hanja: "漁夫之利", meaning: "두 사람이 서로 싸우는 사이에 엉뚱한 사람이 애쓰지 않고 가로챈 이익.", blankQuestion: "두 사람이 서로 싸우는 사이에 엉뚱한 사람이 가로챈 [   ].", blankAnswer: "이익", hint: "고기잡을 어, 지아비 부, 갈 지, 이로울 리" },
+  { word: "언감생심", hanja: "焉敢生心", meaning: "어찌 감히 그런 마음을 품을 수 있겠냐는 뜻으로, 전혀 그런 마음이 없었음을 이르는 말.", blankQuestion: "전혀 그런 [   ]이 없었음을 이르는 말.", blankAnswer: "마음", hint: "어찌 언, 감히 감, 날 생, 마음 심" },
+  { word: "역지사지", hanja: "易地思之", meaning: "처지를 바꾸어서 생각하여 봄.", blankQuestion: "처지를 [   ] 생각하여 봄.", blankAnswer: "바꾸어서", hint: "바꿀 역, 땅 지, 생각할 사, 갈 지" },
+  { word: "오리무중", hanja: "五里霧中", meaning: "무슨 일에 대하여 방향이나 갈피를 잡을 수 없음을 이르는 말.", blankQuestion: "무슨 일에 대하여 방향이나 [   ]를 잡을 수 없음을 이르는 말.", blankAnswer: "갈피", hint: "다섯 오, 마을 리, 안개 무, 가운데 중" },
+  { word: "오월동주", hanja: "吳越同舟", meaning: "서로 적의를 품은 사람들이 한자리에 있게 된 경우나 서로 협력하여야 하는 상황.", blankQuestion: "서로 [   ]를 품은 사람들이 한자리에 있게 된 경우나 협력하는 상황.", blankAnswer: "적의", hint: "오나라 오, 월나라 월, 한가지 동, 배 주" },
+  { word: "오합지졸", hanja: "烏合之卒", meaning: "까마귀가 모인 것처럼 임시로 모여들어서 규율이 없고 무질서한 병졸.", blankQuestion: "임시로 모여들어서 [   ]이 없고 무질서한 병졸.", blankAnswer: "규율", hint: "까마귀 오, 합할 합, 갈 지, 군사 졸" },
+  { word: "우공이산", hanja: "愚公移山", meaning: "어떤 일이든 끊임없이 노력하면 반드시 이루어짐을 이르는 말.", blankQuestion: "어떤 일이든 끊임없이 [   ]하면 반드시 이루어짐을 이르는 말.", blankAnswer: "노력", hint: "어리석을 우, 공평할 공, 옮길 이, 뫼 산" },
+  { word: "유비무환", hanja: "有備無患", meaning: "미리 준비가 되어 있으면 걱정할 것이 없음.", blankQuestion: "미리 [   ]가 되어 있으면 걱정할 것이 없음.", blankAnswer: "준비", hint: "있을 유, 갖출 비, 없을 무, 근심 환" },
+  { word: "유언비어", hanja: "流言蜚語", meaning: "아무 근거 없이 널리 퍼진 소문.", blankQuestion: "아무 [   ] 없이 널리 퍼진 소문.", blankAnswer: "근거", hint: "흐를 류, 말씀 언, 바퀴벌레 비, 말씀 어" },
+  { word: "이심전심", hanja: "以心傳心", meaning: "마음과 마음으로 서로 뜻이 통함.", blankQuestion: "마음과 마음으로 서로 [   ]이 통함.", blankAnswer: "뜻", hint: "써 이, 마음 심, 전할 전, 마음 심" },
+  { word: "일진일퇴", hanja: "一進一退", meaning: "한 번 앞으로 나아갔다 한 번 뒤로 물러섰다 함.", blankQuestion: "한 번 앞으로 나아갔다 한 번 뒤로 [   ] 함.", blankAnswer: "물러섰다", hint: "한 일, 나아갈 진, 한 일, 물러날 퇴" },
+  { word: "일촉즉발", hanja: "一觸即發", meaning: "한 번 건드리기만 해도 폭발할 것같이 몹시 위급한 상태.", blankQuestion: "한 번 건드리기만 해도 폭발할 것같이 몹시 [   ] 상태.", blankAnswer: "위급한", hint: "한 일, 닿을 촉, 곧 즉, 필 발" },
+  { word: "자승자박", hanja: "自繩自縛", meaning: "자신이 한 말과 행동에 자신이 구속되어 괴로움을 당함.", blankQuestion: "자신이 한 말과 행동에 자신이 [   ]되어 괴로움을 당함.", blankAnswer: "구속", hint: "스스로 자, 줄 승, 스스로 자, 묶을 박" },
+  { word: "자포자기", hanja: "自暴自棄", meaning: "절망에 빠져 자신을 스스로 포기하고 돌아보지 아니함.", blankQuestion: "절망에 빠져 자신을 스스로 포기하고 [   ] 아니함.", blankAnswer: "돌아보지", hint: "스스로 자, 사나울 포, 스스로 자, 버릴 기" },
+  { word: "적반하장", hanja: "賊反荷杖", meaning: "도둑이 도리어 매를 든다는 뜻으로, 잘못한 사람이 아무 잘못도 없는 사람을 나무람.", blankQuestion: "잘못한 사람이 아무 잘못도 없는 사람을 [   ].", blankAnswer: "나무람", hint: "도둑 적, 돌이킬 반, 멜 하, 지팡이 장" },
+  { word: "전전긍긍", hanja: "戰전兢兢", meaning: "몹시 두려워서 벌벌 떨며 조심함.", blankQuestion: "몹시 [   ] 벌벌 떨며 조심함.", blankAnswer: "두려워서", hint: "싸울 전, 싸울 전, 떨 긍, 떨 긍" },
+  { word: "전화위복", hanja: "轉禍為福", meaning: "재앙과 화난이 바뀌어 오히려 복이 됨.", blankQuestion: "재앙과 화난이 바뀌어 오히려 [   ]이 됨.", blankAnswer: "복", hint: "구를 전, 재앙 화, 할 위, 복 복" },
+  { word: "절차탁마", hanja: "切磋琢磨", meaning: "옥이나 돌 따위를 갈고 닦아서 빛을 낸다는 뜻으로, 부지런히 학문과 덕행을 닦음.", blankQuestion: "부지런히 학문과 [   ]을 닦음.", blankAnswer: "덕행", hint: "끊을 절, 갈 차, 쫄 탁, 갈 마" },
+  { word: "절치부심", hanja: "切齒腐心", meaning: "몹시 분하여 이를 갈며 속을 썩임.", blankQuestion: "몹시 분하여 이를 갈며 속을 [   ].", blankAnswer: "썩임", hint: "끊을 절, 이 치, 썩을 부, 마음 심" },
+  { word: "점입가경", hanja: "漸入佳境", meaning: "들어갈수록 점점 재미가 있음. 또는 시간이 지날수록 꼴불견임.", blankQuestion: "들어갈수록 점점 [   ]가 있음.", blankAnswer: "재미", hint: "점점 점, 들 입, 아름다울 가, 지경 경" },
+  { word: "좌충우돌", hanja: "左衝右突", meaning: "아무에게나 또는 아무 일에나 함부로 맞닥뜨림.", blankQuestion: "아무에게나 또는 아무 일에나 함부로 [   ].", blankAnswer: "맞닥뜨림", hint: "왼 좌, 찌를 충, 오른 우, 갑자기 돌" },
+  { word: "천방지축", hanja: "天方地軸", meaning: "너무 급하여 허둥지둥 함부로 날뜀.", blankQuestion: "너무 급하여 허둥지둥 함부로 [   ].", blankAnswer: "날뜀", hint: "하늘 천, 모 방, 땅 지, 굴대 축" },
+  { word: "천우신조", hanja: "天佑神助", meaning: "하늘이 돕고 신령이 도움. 또는 그런 일.", blankQuestion: "하늘이 돕고 신령이 도움. 또는 그런 [   ].", blankAnswer: "일", hint: "하늘 천, 도울 우, 귀신 신, 도울 조" },
+  { word: "천태만상", hanja: "千態萬象", meaning: "세상 사물이 한결같지 아니하고 각각 모습 모양이 다름을 이르는 말.", blankQuestion: "세상 사물이 한결같지 아니하고 각각 모습 모양이 [   ]을 이르는 말.", blankAnswer: "다름", hint: "일천 천, 모습 태, 일만 만, 코끼리 상" },
+  { word: "파죽지세", hanja: "破竹之勢", meaning: "적을 거침없이 물리치고 쳐들어가는 기세를 이르는 말.", blankQuestion: "적을 거침없이 물리치고 쳐들어가는 [   ]를 이르는 말.", blankAnswer: "기세", hint: "깨뜨릴 파, 대 죽, 갈 지, 형세 세" },
+  { word: "학수고대", hanja: "鶴首苦待", meaning: "학의 목처럼 목을 길게 빼고 간절히 기다림.", blankQuestion: "학의 목처럼 목을 길게 빼고 간절히 [   ].", blankAnswer: "기다림", hint: "학 학, 머리 수, 쓸 고, 기다릴 대" },
+  { word: "함분축원", hanja: "含憤蓄怨", meaning: "마음을 품고 원한을 쌓음.", blankQuestion: "마음을 품고 [   ]을 쌓음.", blankAnswer: "원한", hint: "머금음 함, 분할 분, 모을 축, 원망할 원" },
+  { word: "호가호위", hanja: "狐假虎威", meaning: "남의 권세를 빌려 위세를 부림.", blankQuestion: "남의 권세를 빌려 [   ]를 부림.", blankAnswer: "위세", hint: "여우 호, 거짓 가, 범 호, 위엄 위" },
+  { word: "호각지세", hanja: "互角之勢", meaning: "서로 비슷비슷한 역량이나 위세.", blankQuestion: "서로 [   ] 역량이나 위세.", blankAnswer: "비슷비슷한", hint: "서로 호, 뿔 각, 갈 지, 형세 세" },
+  { word: "후생가외", hanja: "後生可畏", meaning: "후진들이 선배들보다 젊고 기력이 좋아 가히 두렵다는 말.", blankQuestion: "후진들이 선배들보다 젊고 기력이 좋아 가히 [   ]는 말.", blankAnswer: "두렵다", hint: "뒤 후, 날 생, 가할 가, 두려워할 외" },
+  { word: "희희낙락", hanja: "喜喜樂樂", meaning: "매우 기뻐하고 즐거워함.", blankQuestion: "매우 기뻐하고 [   ].", blankAnswer: "즐거워함", hint: "기쁠 희, 기쁠 희, 즐길 락, 즐길 락" },
+  { word: "멸사봉공", hanja: "滅私奉公", meaning: "사욕을 버리고 공익을 위하여 힘씀.", blankQuestion: "사욕을 버리고 [   ]을 위하여 힘씀.", blankAnswer: "공익", hint: "멸할 멸, 사사 사, 받들 봉, 공평할 공" },
+  { word: "수불석권", hanja: "手不釋卷", meaning: "손에서 책을 놓지 아니하고 늘 글을 읽음.", blankQuestion: "손에서 책을 놓지 아니하고 늘 글을 [   ].", blankAnswer: "읽음", hint: "손 수, 아닐 불, 풀 석, 책 권" },
+  { word: "격세지감", hanja: "隔世之感", meaning: "오래지 않은 동안에 몰라보게 변하여 아주 다른 세상이 된 것 같은 느낌.", blankQuestion: "오래지 않은 동안에 몰라보게 변하여 아주 [   ] 세상이 된 것 같은 느낌.", blankAnswer: "다른", hint: "사이 뜰 격, 인간 세, 갈 지, 느낄 감" },
+  { word: "와신상담", hanja: "臥薪嘗膽", meaning: "원수를 갚거나 마음먹은 일을 이루기 위하여 온갖 어려움과 괴로움을 참고 견딤을 비유.", blankQuestion: "원수를 갚거나 마음먹은 일을 이루기 위하여 온갖 어려움을 참고 [   ]을 비유.", blankAnswer: "견딤", hint: "누울 와, 섶나무 신, 맛볼 상, 쓸개 담" },
+  { word: "풍수지탄", hanja: "風樹之歎", meaning: "효도를 다하지 못한 채 어버이를 여읜 자식의 슬픔.", blankQuestion: "효도를 다하지 못한 채 어버이를 여읜 자식의 [   ].", blankAnswer: "슬픔", hint: "바람 풍, 나무 수, 갈 지, 탄식할 탄" },
+  { word: "순망치한", hanja: "脣亡齒寒", meaning: "입술이 없으면 이가 시리다는 뜻으로, 한쪽이 망하면 다른 한쪽도 영향을 받아 온전하기 어려움.", blankQuestion: "한쪽이 망하면 다른 한쪽도 그 영향을 받아 [   ] 어려움.", blankAnswer: "온전하기", hint: "입술 순, 망할 망, 이 치, 찰 한" },
+  { word: "선공후사", hanja: "先公後私", meaning: "공적인 일을 먼저 하고 사사로운 일은 뒤로 미룸.", blankQuestion: "공적인 일을 먼저 하고 [   ] 일은 뒤로 미룸.", blankAnswer: "사사로운", hint: "먼저 선, 공평할 공, 뒤 후, 사사 사" },
+  { word: "구밀복검", hanja: "口蜜腹劍", meaning: "입에는 꿀이 있고 배 속에는 칼이 있다는 뜻으로, 겉으론 친한 듯하나 속으로는 해칠 생각이 있음.", blankQuestion: "겉으론 친한 듯하나 속으로는 [   ] 생각이 있음.", blankAnswer: "해칠", hint: "입 구, 꿀 밀, 배 복, 칼 검" },
+  { word: "동분서주", hanja: "東奔西走", meaning: "사방으로 이리저리 몹시 바쁘게 돌아다님.", blankQuestion: "사방으로 이리저리 몹시 바쁘게 [   ].", blankAnswer: "돌아다님", hint: "동녘 동, 달릴 분, 서녘 서, 달릴 주" },
+  { word: "간담상조", hanja: "肝膽相照", meaning: "서로 속마음을 털어놓고 친하게 사귐.", blankQuestion: "서로 [   ]을 털어놓고 친하게 사귐.", blankAnswer: "속마음", hint: "간 간, 쓸개 담, 서로 상, 비칠 조" },
+  { word: "속수무책", hanja: "束手無策", meaning: "손을 묶은 것처럼 어찌할 도리가 없어 꼼짝 못 함.", blankQuestion: "손을 묶은 것처럼 어찌할 도리가 없어 꼼짝 [   ].", blankAnswer: "못 함", hint: "묶을 속, 손 수, 없을 무, 꾀 책" },
+  { word: "연목구어", hanja: "緣木求魚", meaning: "나무에 올라가서 물고기를 구한다는 뜻으로, 도저히 불가능한 일을 굳이 하려 함.", blankQuestion: "나무에 올라가서 물고기를 구한다는 뜻으로, 도저히 [   ] 일을 굳이 하려 함.", blankAnswer: "불가능한", hint: "인연 연, 나무 목, 구할 구, 고기 어" },
+  { word: "금석맹약", hanja: "金石盟約", meaning: "쇠나 돌처럼 굳고 변함없는 약속.", blankQuestion: "쇠나 돌처럼 굳고 [   ] 약속.", blankAnswer: "변함없는", hint: "쇠 금, 돌 석, 맹세 맹, 맺을 약" },
+  { word: "흥진비래", hanja: "興盡悲來", meaning: "즐거운 일이 다하면 슬픈 일이 닥쳐온다는 뜻으로, 세상일은 순환되는 것임.", blankQuestion: "즐거운 일이 다하면 슬픈 일이 닥쳐온다는 뜻으로, 세상일은 [   ]되는 것임.", blankAnswer: "순환", hint: "일 흥, 다할 진, 슬플 비, 올 래" },
+  { word: "토사구팽", hanja: "兔死狗烹", meaning: "필요할 때는 쓰고 필요 없을 때는 야박하게 버리는 경우.", blankQuestion: "필요할 때는 쓰고 필요 없을 때는 야박하게 [   ] 경우.", blankAnswer: "버리는", hint: "토끼 토, 죽을 사, 개 구, 삶을 팽" },
+  { word: "대기만성", hanja: "大器晚成", meaning: "큰 그릇을 만드는 데는 시간이 오래 걸린다는 뜻으로, 크게 될 사람은 늦게 이루어짐.", blankQuestion: "큰 그릇을 만드는 데는 시간이 오래 걸린다는 뜻으로, 크게 될 사람은 [   ] 이루어짐.", blankAnswer: "늦게", hint: "클 대, 그릇 기, 늦을 만, 이룰 성" },
+  { word: "적수공권", hanja: "赤手空拳", meaning: "맨손과 맨주먹이라는 뜻으로, 아무것도 가진 것이 없음을 이르는 말.", blankQuestion: "맨손과 맨주먹이라는 뜻으로, 아무것도 가진 것이 [   ]을 이르는 말.", blankAnswer: "없음", hint: "붉을 적, 손 수, 빌 공, 주먹 권" },
+  { word: "결자해지", hanja: "結者解之", meaning: "자기가 저지른 일은 자기가 해결하여야 함을 이르는 말.", blankQuestion: "자기가 저지른 일은 자기가 [   ]하여야 함을 이르는 말.", blankAnswer: "해결", hint: "맺을 결, 놈 자, 풀 해, 갈 지" },
+  { word: "금의환향", hanja: "錦衣還鄉", meaning: "비단옷을 입고 고향에 돌아온다는 뜻으로, 출세를 하여 고향에 돌아옴.", blankQuestion: "비단옷을 입고 고향에 돌아온다는 뜻으로, [   ]를 하여 고향에 돌아옴.", blankAnswer: "출세", hint: "비단 금, 옷 의, 돌아올 환, 시골 향" },
+  { word: "천재일우", hanja: "千載一遇", meaning: "천년 동안 단 한 번 만난다는 뜻으로, 좀처럼 만나기 어려운 좋은 기회.", blankQuestion: "천년 동안 단 한 번 만난다는 뜻으로, 좀처럼 만나기 어려운 좋은 [   ].", blankAnswer: "기회", hint: "일천 천, 실을 재, 한 일, 만날 우" },
+  { word: "반신반의", hanja: "半信半疑", meaning: "얼마쯤 믿으면서도 한편으로는 의심함.", blankQuestion: "얼마쯤 믿으면서도 한편으로는 [   ].", blankAnswer: "의심함", hint: "반 반, 믿을 신, 반 반, 의심할 의" },
+  { word: "허장성세", hanja: "虛張聲勢", meaning: "실속은 없으면서 큰소리치거나 허세를 부림.", blankQuestion: "실속은 없으면서 큰소리치거나 [   ]를 부림.", blankAnswer: "허세", hint: "빌 허, 베풀 장, 소리 성, 형세 세" },
+  { word: "전전반측", hanja: "輾轉反側", meaning: "누워서 몸을 이리저리 뒤척이며 잠을 이루지 못함.", blankQuestion: "누워서 몸을 이리저리 뒤척이며 잠을 [   ] 못함.", blankAnswer: "이루지", hint: "구를 전, 구를 전, 돌이킬 반, 곁 측" },
+  { word: "암중모색", hanja: "暗中摸索", meaning: "어둠 속에서 더듬어 찾음. 은밀한 가운데 일의 실마리나 해결책을 찾아내려 함.", blankQuestion: "어둠 속에서 더듬어 찾음. 은밀한 가운데 일의 [   ]나 해결책을 찾아내려 함.", blankAnswer: "실마리", hint: "어두울 암, 가운데 중, 더듬을 모, 찾을 색" },
+  { word: "견마지로", hanja: "犬馬之勞", meaning: "개나 말 정도의 하찮은 힘이라는 뜻으로, 윗사람에게 충성을 다하는 노력을 낮추어 이르는 말.", blankQuestion: "윗사람에게 충성을 다하는 자신의 노력을 [   ] 이르는 말.", blankAnswer: "낮추어", hint: "개 견, 말 마, 갈 지, 수고할 로" },
+  { word: "곡학아세", hanja: "曲學阿世", meaning: "바른 길에서 벗어난 학문으로 세상 사람에게 아첨함.", blankQuestion: "바른 길에서 벗어난 학문으로 세상 사람에게 [   ].", blankAnswer: "아첨함", hint: "굽을 곡, 배울 학, 언덕 아, 인간 세" },
+  { word: "마이동풍", hanja: "馬耳東風", meaning: "동풍이 말의 귀를 스쳐 간다는 뜻으로, 남의 말을 귀담아듣지 아니하고 흘려버림.", blankQuestion: "남의 말을 귀담아듣지 아니하고 [   ].", blankAnswer: "흘려버림", hint: "말 마, 귀 이, 동녘 동, 바람 풍" },
+  { word: "어불성설", hanja: "語不成說", meaning: "말이 조금도 사리에 맞지 아니함.", blankQuestion: "말이 조금도 사리에 맞지 [   ].", blankAnswer: "아니함", hint: "말씀 어, 아닐 불, 이룰 성, 말씀 설" },
+  { word: "죽마고우", hanja: "竹馬故友", meaning: "대말을 타고 놀던 벗이라는 뜻으로, 어릴 때부터 같이 놀며 자란 벗.", blankQuestion: "대말을 타고 놀던 벗이라는 뜻으로, 어릴 때부터 같이 놀며 자란 [   ].", blankAnswer: "벗", hint: "대 죽, 말 마, 옛 고, 벗 우" },
+  { word: "인면수심", hanja: "人面獸心", meaning: "사람의 얼굴을 하고 있으나 마음은 짐승과 같다는 뜻으로, 마음이나 행동이 몹시 흉악함.", blankQuestion: "사람의 얼굴을 하고 있으나 마음은 짐승과 같다는 뜻으로, 마음이나 행동이 몹시 [   ].", blankAnswer: "흉악함", hint: "사람 인, 낯 면, 짐승 수, 마음 심" },
+  { word: "측은지심", hanja: "惻隱之心", meaning: "사단(四端)의 하나. 불쌍히 여기는 마음.", blankQuestion: "사단(四端)의 하나. [   ] 여기는 마음.", blankAnswer: "불쌍히", hint: "슬퍼할 측, 숨을 은, 갈 지, 마음 심" },
+  { word: "언어도단", hanja: "言語道斷", meaning: "어이가 없어서 말하려 해도 말할 수 없음을 이르는 말.", blankQuestion: "어이가 없어서 말하려 해도 [   ] 없음을 이르는 말.", blankAnswer: "말할 수", hint: "말씀 언, 말씀 어, 길 도, 끊을 단" },
+  { word: "혼정신성", hanja: "昏定晨省", meaning: "부모를 잘 섬기고 효성을 다함을 이르는 말.", blankQuestion: "부모를 잘 섬기고 [   ]을 다함을 이르는 말.", blankAnswer: "효성", hint: "어두울 혼, 정할 정, 새벽 신, 살필 성" },
+  { word: "결초보은", hanja: "結草報恩", meaning: "죽은 뒤에라도 은혜를 잊지 않고 갚음을 이르는 말.", blankQuestion: "죽은 뒤에라도 [   ]를 잊지 않고 갚음을 이르는 말.", blankAnswer: "은혜", hint: "맺을 결, 풀 초, 갚을 보, 은혜 은" },
+  { word: "작심삼일", hanja: "作心三日", meaning: "단단히 먹은 마음이 사흘을 가지 못한다는 뜻으로, 결심이 굳지 못함.", blankQuestion: "단단히 먹은 마음이 사흘을 가지 못한다는 뜻으로, [   ]이 굳지 못함.", blankAnswer: "결심", hint: "지을 작, 마음 심, 석 삼, 날 일" },
+  { word: "일장춘몽", hanja: "一場春夢", meaning: "한바탕의 봄꿈이라는 뜻으로, 헛된 영화나 덧없는 일.", blankQuestion: "한바탕의 봄꿈이라는 뜻으로, 헛된 영화나 [   ] 일.", blankAnswer: "덧없는", hint: "한 일, 마당 장, 봄 춘, 꿈 몽" },
+  { word: "인지상정", hanja: "人之常情", meaning: "사람이면 누구나 가지는 보통의 마음.", blankQuestion: "사람이면 누구나 가지는 [   ] 마음.", blankAnswer: "보통의", hint: "사람 인, 갈 지, 항상 상, 뜻 정" },
+  { word: "사세부득", hanja: "事勢不得", meaning: "어쩔 수 없는 상황 때문에 그렇게 할 수밖에 없음. 또는 그런 일.", blankQuestion: "어쩔 수 없는 상황 때문에 그렇게 [   ] 없음. 또는 그런 일.", blankAnswer: "할 수밖에", hint: "일 사, 형세 세, 아닐 부, 얻을 득" },
+  { word: "유만부득", hanja: "類萬不得", meaning: "여러 가지로 많다 하여도 그것을 얻거나 취할 수는 없음.", blankQuestion: "여러 가지로 많다 하여도 그것을 [   ] 취할 수는 없음.", blankAnswer: "얻거나", hint: "무리 류, 일만 만, 아닐 부, 얻을 득" },
+  { word: "천신만고", hanja: "千辛萬苦", meaning: "온갖 어려운 고비를 다 겪으며 심하게 고생함.", blankQuestion: "온갖 어려운 고비를 다 겪으며 심하게 [   ].", blankAnswer: "고생함", hint: "일천 천, 매울 신, 일만 만, 쓸 고" },
+  { word: "망양지탄", hanja: "亡羊之歎", meaning: "학문의 길이 여러 갈래여서 한 갈래의 진리도 얻기 어려움을 이르는 말.", blankQuestion: "학문의 길이 여러 갈래여서 한 갈래의 [   ]도 얻기 어려움을 이르는 말.", blankAnswer: "진리", hint: "망할 망, 양 양, 갈 지, 탄식할 탄" },
+  { word: "가렴주구", hanja: "苛斂誅求", meaning: "세금을 가혹하게 거두어들이고, 무리하게 재물을 빼앗음.", blankQuestion: "세금을 가혹하게 거두어들이고, 무리하게 재물을 [   ].", blankAnswer: "빼앗음", hint: "가혹할 가, 거둘 렴, 벨 주, 구할 구" },
+  { word: "견문발검", hanja: "見蚊拔劍", meaning: "모기를 보고 칼을 뺀다는 뜻으로, 사소한 일에 크게 성내어 덤빔.", blankQuestion: "모기를 보고 칼을 뺀다는 뜻으로, 사소한 일에 크게 성내어 [   ].", blankAnswer: "덤빔", hint: "볼 견, 모기 문, 뺄 발, 칼 검" },
+  { word: "견원지간", hanja: "犬猿之間", meaning: "개와 원숭이의 사이라는 뜻으로, 사이가 매우 나쁜 두 관계.", blankQuestion: "개와 원숭이의 사이라는 뜻으로, 사이가 매우 [   ] 두 관계.", blankAnswer: "나쁜", hint: "개 견, 원숭이 원, 갈 지, 사이 간" },
+  { word: "경국지색", hanja: "傾國之色", meaning: "뛰어나게 아름다운 미인을 이르는 말.", blankQuestion: "뛰어나게 아름다운 [   ]을 이르는 말.", blankAnswer: "미인", hint: "기울 경, 나라 국, 갈 지, 빛 색" },
+  { word: "금의야행", hanja: "錦衣夜行", meaning: "비단옷을 입고 밤길을 다닌다는 뜻으로, 자랑삼아 하지 않으면 생색이 나지 않음.", blankQuestion: "비단옷을 입고 밤길을 다닌다는 뜻으로, 자랑삼아 하지 않으면 [   ]이 나지 않음.", blankAnswer: "생색", hint: "비단 금, 옷 의, 밤 야, 다닐 행" },
+  { word: "낭중지추", hanja: "囊中之錐", meaning: "재능이 뛰어난 사람은 숨어 있어도 저절로 사람들에게 알려짐.", blankQuestion: "재능이 뛰어난 사람은 숨어 있어도 저절로 사람들에게 [   ].", blankAnswer: "알려짐", hint: "주머니 낭, 가운데 중, 갈 지, 송곳 추" },
+  { word: "당랑거철", hanja: "螳螂拒轍", meaning: "제 역량을 생각하지 않고, 강한 상대나 되지 않을 일에 덤벼드는 무모한 행동거지.", blankQuestion: "강한 상대나 되지 않을 일에 덤벼드는 [   ] 행동거지.", blankAnswer: "무모한", hint: "사마귀 당, 사마귀 랑, 막을 거, 바퀴자국 철" },
+  { word: "망운지정", hanja: "望雲之情", meaning: "자식이 객지에서 고향에 계신 어버이를 생각하는 마음.", blankQuestion: "자식이 객지에서 고향에 계신 [   ]를 생각하는 마음.", blankAnswer: "어버이", hint: "바랄 망, 구름 운, 갈 지, 뜻 정" },
+  { word: "발본색원", hanja: "拔本塞源", meaning: "좋지 않은 일의 근본 원인이 되는 요소를 완전히 없애 버림.", blankQuestion: "좋지 않은 일의 근본 원인이 되는 요소를 완전히 [   ] 버림.", blankAnswer: "없애", hint: "뺄 발, 근본 본, 막을 색, 근원 원" },
+  { word: "소탐대실", hanja: "小貪大失", meaning: "작은 것을 탐하다가 큰 것을 잃음.", blankQuestion: "작은 것을 탐하다가 큰 것을 [   ].", blankAnswer: "잃음", hint: "작을 소, 탐할 탐, 클 대, 잃을 실" },
+  { word: "염량세태", hanja: "炎涼世態", meaning: "세력이 있을 때는 아첨하여 따르고 세력이 없어지면 푸대접하는 세상인심.", blankQuestion: "세력이 있을 때는 따르고 없어지면 [   ]하는 세상인심.", blankAnswer: "푸대접", hint: "불꽃 염, 서늘할 량, 인간 세, 모습 태" },
+  { word: "사상누각", hanja: "沙上樓閣", meaning: "기초가 튼튼하지 못하여 오래 견디지 못할 일이나 물건.", blankQuestion: "기초가 튼튼하지 못하여 오래 견디지 못할 일이나 [   ].", blankAnswer: "물건", hint: "모래 사, 위 상, 다락 루, 집 각" },
+  { word: "명약관화", hanja: "明若觀火", meaning: "불을 보듯 분명하고 뻔함.", blankQuestion: "불을 보듯 분명하고 [   ].", blankAnswer: "뻔함", hint: "밝을 명, 같을 약, 볼 관, 불 화" },
+  { word: "장유유서", hanja: "長幼有序", meaning: "어른과 어린이 사이의 도리는 엄격한 차례가 있고 복종해야 할 질서가 있음.", blankQuestion: "어른과 어린이 사이의 도리는 엄격한 차례가 있고 [   ]해야 할 질서가 있음.", blankAnswer: "복종", hint: "길 장, 어릴 유, 있을 유, 차례 서" },
+  { word: "십벌지목", hanja: "十伐之木", meaning: "열 번 찍어 베는 나무라는 뜻으로, 열 번 찍어 안 넘어가는 나무가 없음을 이르는 말.", blankQuestion: "열 번 찍어 안 [   ] 나무가 없음을 이르는 말.", blankAnswer: "넘어가는", hint: "열 십, 칠 벌, 갈 지, 나무 목" },
+  { word: "안분지족", hanja: "安分知足", meaning: "편안한 마음으로 제 분수를 지키며 만족할 줄을 앎.", blankQuestion: "편안한 마음으로 제 분수를 지키며 [   ]할 줄을 앎.", blankAnswer: "만족", hint: "편안할 안, 나눌 분, 알 지, 족할 족" },
+  { word: "견물생심", hanja: "見物生心", meaning: "실물을 보게 되면 그것을 가지고 싶은 욕심이 생김.", blankQuestion: "실물을 보게 되면 그것을 가지고 싶은 [   ]이 생김.", blankAnswer: "욕심", hint: "볼 견, 만물 물, 날 생, 마음 심" },
+  { word: "심기일전", hanja: "心機一轉", meaning: "어떠한 동기가 있어 이제까지 가졌던 마음가짐을 버리고 완전히 달라짐.", blankQuestion: "동기가 있어 이제까지 가졌던 마음가짐을 버리고 완전히 [   ].", blankAnswer: "달라짐", hint: "마음 심, 틀 기, 한 일, 구를 전" },
+  { word: "노심초사", hanja: "勞心焦思", meaning: "몹시 마음을 쓰며 애를 태움.", blankQuestion: "몹시 마음을 쓰며 애를 [   ].", blankAnswer: "태움", hint: "수고할 로, 마음 심, 탈 초, 생각 사" },
+  { word: "물아일체", hanja: "物我一體", meaning: "외물과 자아, 객관과 주관, 또는 물질계와 정신계가 어울려 하나가 됨.", blankQuestion: "객관과 주관, 또는 물질계와 정신계가 어울려 [   ] 됨.", blankAnswer: "하나가", hint: "만물 물, 나 아, 한 일, 몸 체" },
+  { word: "상전벽해", hanja: "桑田碧海", meaning: "뽕나무밭이 변하여 푸른 바다가 된다는 뜻으로, 세상일의 변천이 심함을 비유.", blankQuestion: "뽕나무밭이 변하여 푸른 바다가 된다는 뜻으로, 세상일의 변천이 [   ]을 비유.", blankAnswer: "심함", hint: "뽕나무 상, 밭 전, 푸를 벽, 바다 해" },
+  { word: "일망무제", hanja: "一望無際", meaning: "한눈에 바라볼 수 없을 정도로 아득하게 멀고 넓어서 끝이 없음.", blankQuestion: "한눈에 바라볼 수 없을 정도로 아득하게 멀고 넓어서 끝이 [   ].", blankAnswer: "없음", hint: "한 일, 바랄 망, 없을 무, 즈음 제" },
+  { word: "창해일속", hanja: "滄海一粟", meaning: "넓고 큰 바닷속의 좁쌀 한 알이라는 뜻으로, 매우 하찮고 작은 것을 이르는 말.", blankQuestion: "넓고 큰 바닷속의 좁쌀 한 알이라는 뜻으로, 매우 하찮고 [   ] 것을 이르는 말.", blankAnswer: "작은", hint: "큰바다 창, 바다 해, 한 일, 조 속" },
+  { word: "청출어람", hanja: "靑出於藍", meaning: "제자나 후배가 스승이나 선배보다 나음을 비유적으로 이르는 말.", blankQuestion: "제자나 후배가 스승이나 선배보다 [   ]을 비유적으로 이르는 말.", blankAnswer: "나음", hint: "푸를 청, 날 출, 어조사 어, 쪽 람" },
+  { word: "임기응변", hanja: "臨機應變", meaning: "그때그때 처한 사태에 맞추어 즉각 그 자리에서 결정하거나 처리함.", blankQuestion: "그때그때 처한 사태에 맞추어 즉각 그 자리에서 결정하거나 [   ].", blankAnswer: "처리함", hint: "임할 림, 틀 기, 응할 응, 변할 변" },
+  { word: "기사회생", hanja: "起死回生", meaning: "거의 죽을 뻔하다가 도로 살아남.", blankQuestion: "거의 죽을 뻔하다가 도로 [   ].", blankAnswer: "살아남", hint: "일어날 기, 죽을 사, 돌아올 회, 날 생" },
+  { word: "백중지세", hanja: "伯仲之勢", meaning: "서로 우열을 가리기 힘든 형세.", blankQuestion: "서로 [   ]을 가리기 힘든 형세.", blankAnswer: "우열", hint: "맏 백, 버금 중, 갈 지, 형세 세" },
+  { word: "자강불식", hanja: "自強不息", meaning: "스스로 힘써 몸과 마음을 가다듬어 쉬지 아니함.", blankQuestion: "스스로 힘써 몸과 마음을 가다듬어 [   ] 아니함.", blankAnswer: "쉬지", hint: "스스로 자, 굳셀 강, 아닐 불, 쉴 식" },
+  { word: "고진감래", hanja: "苦盡甘來", meaning: "쓴 것이 다하면 단 것이 온다는 뜻으로, 고생 끝에 즐거움이 옴.", blankQuestion: "쓴 것이 다하면 단 것이 온다는 뜻으로, 고생 끝에 [   ]이 옴.", blankAnswer: "즐거움", hint: "쓸 고, 다할 진, 달 감, 올 래" },
+  { word: "자업자득", hanja: "自業自得", meaning: "자기가 저지른 일의 결과를 자기가 받음.", blankQuestion: "자기가 저지른 일의 결과를 자기가 [   ].", blankAnswer: "받음", hint: "스스로 자, 업 업, 스스로 자, 얻을 득" },
+  { word: "조삼모사", hanja: "朝三暮四", meaning: "간사한 꾀로 남을 속여 희롱함을 이르는 말.", blankQuestion: "간사한 꾀로 남을 속여 [   ]을 이르는 말.", blankAnswer: "희롱함", hint: "아침 조, 석 삼, 저물 모, 넉 사" },
+  { word: "금과옥조", hanja: "金科玉條", meaning: "금이나 옥처럼 귀중히 여겨 꼭 지켜야 할 법칙이나 규정.", blankQuestion: "금이나 옥처럼 귀중히 여겨 꼭 지켜야 할 [   ]이나 규정.", blankAnswer: "법칙", hint: "쇠 금, 과목 과, 구슬 옥, 가지 조" },
+  { word: "거안제미", hanja: "舉案齊眉", meaning: "밥상을 눈썹과 가지런하도록 공손히 들어 남편 앞에 가지고 간다는 뜻으로, 남편을 깍듯이 공경함.", blankQuestion: "남편을 깍듯이 [   ]함을 이르는 말.", blankAnswer: "공경", hint: "들 거, 책상 안, 가지런할 제, 눈썹 미" },
+  { word: "형우제공", hanja: "兄友弟恭", meaning: "형제간에 서로 우애 깊게 지냄을 이르는 말.", blankQuestion: "형제간에 서로 [   ] 깊게 지냄을 이르는 말.", blankAnswer: "우애", hint: "맏 형, 벗 우, 아우 제, 공손할 공" },
+  { word: "한우충동", hanja: "汗牛充棟", meaning: "수레에 실어 운반하면 소가 땀을 흘리게 되고, 쌓아 올리면 들보에 닿을 정도의 많은 양의 책.", blankQuestion: "쌓아 올리면 들보에 닿을 정도의 많은 양의 [   ].", blankAnswer: "책", hint: "땀 한, 소 우, 채울 충, 마룻대 동" },
+  { word: "위편삼절", hanja: "韋編三絶", meaning: "한 권의 책을 몇 십 번이나 되풀이해서 읽음을 비유하는 말.", blankQuestion: "한 권의 책을 몇 십 번이나 되풀이해서 [   ]을 비유.", blankAnswer: "읽음", hint: "가죽 위, 엮을 편, 석 삼, 끊을 절" },
+  { word: "독서상우", hanja: "讀書尙友", meaning: "책을 읽음으로써 옛 현인(賢人)과 벗함.", blankQuestion: "책을 읽음으로써 옛 [   ]과 벗함.", blankAnswer: "현인", hint: "읽을 독, 글 서, 오히려 상, 벗 우" },
+  { word: "백가쟁명", hanja: "百家爭鳴", meaning: "많은 학자나 문화인 등이 자기의 학설이나 주장을 자유롭게 발표하여 논쟁하고 토론하는 일.", blankQuestion: "자기의 학설이나 주장을 자유롭게 발표하여 논쟁하고 [   ]하는 일.", blankAnswer: "토론", hint: "일백 백, 집 가, 다툴 쟁, 울 명" },
+  { word: "형설지공", hanja: "螢雪之功", meaning: "가난한 사람이 반딧불과 눈빛으로 글을 읽어가며 고생 속에서 공부함.", blankQuestion: "가난한 사람이 반딧불과 눈빛으로 고생 속에서 [   ]함.", blankAnswer: "공부", hint: "개똥벌레 형, 눈 설, 갈 지, 공 공" },
+  { word: "정문일침", hanja: "頂門一鍼", meaning: "정수리에 침을 놓는다는 뜻으로, 따끔한 충고나 교훈을 이르는 말.", blankQuestion: "정수리에 침을 놓는다는 뜻으로, 따끔한 충고나 [   ]을 이르는 말.", blankAnswer: "교훈", hint: "정수리 정, 문 문, 한 일, 침 침" },
+  { word: "교학상장", hanja: "敎學相長", meaning: "가르치는 것과 배우는 것은 서로에게 도움이 됨.", blankQuestion: "가르치는 것과 배우는 것은 서로에게 [   ]이 됨.", blankAnswer: "도움", hint: "가르칠 교, 배울 학, 서로 상, 길 장" },
+  { word: "고식지계", hanja: "姑息之計", meaning: "근본적인 해결책이 아닌, 당장의 어려움만 피하기 위한 임시 방법.", blankQuestion: "해결책이 아닌, 당장의 어려움만 피하기 위한 [   ] 방법.", blankAnswer: "임시", hint: "시어미 고, 쉴 식, 갈 지, 꾀 계" },
+  { word: "견강부회", hanja: "牽强附會", meaning: "합당하지 않은 근거를 억지로 끌어다 자기의 주장을 합리화 시킴.", blankQuestion: "합당하지 않은 근거를 억지로 끌어다 자기의 주장을 [   ] 시킴.", blankAnswer: "합리화", hint: "끌 견, 굳셀 강, 붙을 부, 모일 회" },
+  { word: "사필귀정", hanja: "事必歸正", meaning: "모든 일은 결국에 가서는 바르게 시비가 가려지게 됨.", blankQuestion: "모든 일은 결국에 가서는 [   ] 시비가 가려지게 됨.", blankAnswer: "바르게", hint: "일 사, 반드시 필, 돌아갈 귀, 바를 정" },
+  { word: "자중지란", hanja: "自中之亂", meaning: "같은 편, 같은 무리 내에서 일어나는 싸움.", blankQuestion: "같은 편, 같은 무리 내에서 일어나는 [   ].", blankAnswer: "싸움", hint: "스스로 자, 가운데 중, 갈 지, 어지러울 란" },
+  { word: "좌고우면", hanja: "左顧右眄", meaning: "이쪽저쪽을 돌아본다는 뜻으로, 앞뒤를 재고 망설임을 이르는 말.", blankQuestion: "이쪽저쪽을 돌아본다는 뜻으로, 앞뒤를 재고 [   ]을 이르는 말.", blankAnswer: "망설임", hint: "왼 좌, 돌아볼 고, 오른 우, 면류관 면" },
+  { word: "교언영색", hanja: "巧言令色", meaning: "남의 비위를 맞추기 위해 말을 교묘히 꾸미고 표정을 좋게 함.", blankQuestion: "남의 비위를 맞추기 위해 말을 교묘히 꾸미고 표정을 좋게 [   ].", blankAnswer: "함", hint: "공교할 교, 말씀 언, 하여금 령, 빛 색" },
+  { word: "지록위마", hanja: "指鹿爲馬", meaning: "윗사람을 농락하며 권세를 마음대로 휘두름을 이르는 말.", blankQuestion: "윗사람을 [   ]하며 권세를 마음대로 휘두름을 이르는 말.", blankAnswer: "농락", hint: "가리킬 지, 사슴 록, 할 위, 말 마" },
+  { word: "불치하문", hanja: "不恥下問", meaning: "손아랫사람에게 묻는 것을 부끄러워하지 아니함.", blankQuestion: "손아랫사람에게 묻는 것을 [   ] 아니함.", blankAnswer: "부끄러워하지", hint: "아닐 불, 부끄러워할 치, 아래 하, 물을 문" },
+  { word: "주마간산", hanja: "走馬看山", meaning: "시간 들여 찬찬히 훑어보지 않고 서둘러 대충 보고 지나침.", blankQuestion: "시간 들여 찬찬히 훑어보지 않고 서둘러 [   ] 보고 지나침.", blankAnswer: "대충", hint: "달릴 주, 말 마, 볼 간, 뫼 산" },
+  { word: "부창부수", hanja: "夫唱婦隨", meaning: "남편이 주장하고 아내가 이에 잘 따름. 또는 부부 사이의 그런 도리를 이르는 말.", blankQuestion: "남편이 주장하고 아내가 잘 따름. 부부 사이의 그런 [   ].", blankAnswer: "도리", hint: "지아비 부, 부를 창, 며느리 부, 따를 수" },
+  { word: "양두구육", hanja: "羊頭狗肉", meaning: "양머리를 내걸어 놓고 실제로는 개고기를 팖. 즉 겉과 속이 다름.", blankQuestion: "양머리를 내걸어 놓고 실제로는 개고기를 팖. 즉 겉과 속이 [   ].", blankAnswer: "다름", hint: "양 양, 머리 두, 개 구, 고기 육" },
+  { word: "방약무인", hanja: "傍若無人", meaning: "곁에 사람이 없는 것처럼 아무 거리낌 없이 함부로 말하고 행동함.", blankQuestion: "곁에 사람이 없는 것처럼 아무 거리낌 없이 함부로 말하고 [   ].", blankAnswer: "행동함", hint: "곁 방, 같을 약, 없을 무, 사람 인" },
+  { word: "남귤북지", hanja: "南橘北枳", meaning: "남쪽의 귤나무를 북쪽에 옮겨 심으면 탱자나무가 됨. 주변환경에 영향을 받음.", blankQuestion: "주변환경에 영향을 [   ]을 이르는 말.", blankAnswer: "받음", hint: "남녘 남, 귤 귤, 북녘 북, 탱자 지" },
+  { word: "교각살우", hanja: "矯角殺牛", meaning: "소의 뿔을 바로잡려다 소를 죽임. 방법이 지나쳐 일을 그르침.", blankQuestion: "방법이 지나쳐 일을 [   ]을 이르는 말.", blankAnswer: "그르침", hint: "바로잡을 교, 뿔 각, 죽일 살, 소 우" },
+  { word: "자가당착", hanja: "自家撞着", meaning: "자기 말과 행동의 앞뒤가 맞지 않음.", blankQuestion: "자기 말과 행동의 앞뒤가 맞지 [   ].", blankAnswer: "않음", hint: "스스로 자, 집 가, 칠 당, 붙을 착" },
+  { word: "과유불급", hanja: "過猶不及", meaning: "너무 지나치게 되면 오히려 도달하지 않은 것보다 못하게 됨.", blankQuestion: "너무 지나치게 되면 오히려 도달하지 않은 것보다 [   ] 됨.", blankAnswer: "못하게", hint: "지날 과, 같을 유, 아닐 불, 미칠 급" }
+];
+
+export default function App() {
+  const [currentView, setCurrentView] = useState('menu'); // 'menu', 'quiz', 'result', 'flashcard'
+  const [bookmarks, setBookmarks] = useState([]); // 로컬 스토리지에 저장될 오답 단어 배열
+  
+  // Quiz states
+  const [quizQuestions, setQuizQuestions] = useState([]);
+  const [currentIndex, setCurrentIndex] = useState(0);
+  const [score, setScore] = useState(0);
+  const [userInput, setUserInput] = useState("");
+  const [feedback, setFeedback] = useState(null);
+  const [showSelfGrade, setShowSelfGrade] = useState(false);
+  const [incorrectList, setIncorrectList] = useState([]);
+
+  // Flashcard states
+  const [flashcardDeck, setFlashcardDeck] = useState([]);
+  const [isFlipped, setIsFlipped] = useState(false);
+  const [dragStartX, setDragStartX] = useState(null);
+  const [dragX, setDragX] = useState(0);
+  const [flashcardStats, setFlashcardStats] = useState({ known: 0, unknown: 0 });
+
+  // --- 컴포넌트 마운트 시 로컬 스토리지에서 오답(북마크) 불러오기 ---
+  useEffect(() => {
+    const saved = localStorage.getItem('hanjaBookmarks');
+    if (saved) {
+      setBookmarks(JSON.parse(saved));
+    }
+  }, []);
+
+  // --- 북마크 업데이트 함수 (로컬 스토리지 연동) ---
+  const toggleBookmark = (wordStr, add) => {
+    setBookmarks(prev => {
+      let newBookmarks;
+      if (add) {
+        newBookmarks = prev.includes(wordStr) ? prev : [...prev, wordStr];
+      } else {
+        newBookmarks = prev.filter(w => w !== wordStr);
+      }
+      localStorage.setItem('hanjaBookmarks', JSON.stringify(newBookmarks));
+      return newBookmarks;
+    });
+  };
+
+  // ==========================================
+  // [1] 플래시카드 (스마트 암기장) 로직
+  // ==========================================
+  const startFlashcard = (mode, limit) => {
+    let deck = [];
+    if (mode === 'all') {
+      deck = [...wordData]; // 전체 순서대로
+    } else if (mode === 'random') {
+      deck = [...wordData].sort(() => 0.5 - Math.random()); // 전체 섞어서
+      if (limit) deck = deck.slice(0, limit); // 지정된 수만큼 추출 (70개)
+    } else if (mode === 'bookmarks') {
+      deck = wordData.filter(item => bookmarks.includes(item.word)); // 오답만
+      if (deck.length === 0) {
+        alert("저장된 오답(즐겨찾기) 단어가 없습니다!");
+        return;
+      }
+    }
+    setFlashcardDeck(deck);
+    setCurrentIndex(0);
+    setIsFlipped(false);
+    setFlashcardStats({ known: 0, unknown: 0 });
+    setCurrentView('flashcard');
+  };
+
+  const handleDragStart = (e) => {
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    setDragStartX(clientX);
+  };
+
+  const handleDragMove = (e) => {
+    if (dragStartX === null) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    setDragX(clientX - dragStartX);
+  };
+
+  const handleDragEnd = () => {
+    if (dragStartX === null) return;
+    
+    // Swipe Threshold = 100px
+    if (dragX > 100) {
+      handleSwipe('right'); // 오른쪽: 아는 거
+    } else if (dragX < -100) {
+      handleSwipe('left');  // 왼쪽: 모르는 거
+    } else if (Math.abs(dragX) < 10) {
+      setIsFlipped(!isFlipped); // 10px 미만 이동은 터치(클릭)로 간주하여 카드 뒤집기
+    }
+    
+    setDragStartX(null);
+    setDragX(0);
+  };
+
+  const handleSwipe = (direction) => {
+    const currentWord = flashcardDeck[currentIndex].word;
+    
+    if (direction === 'left') {
+      // 모름 -> 오답노트에 추가
+      toggleBookmark(currentWord, true);
+      setFlashcardStats(prev => ({ ...prev, unknown: prev.unknown + 1 }));
+    } else {
+      // 앎 -> 오답노트에서 제거 (선택적)
+      toggleBookmark(currentWord, false);
+      setFlashcardStats(prev => ({ ...prev, known: prev.known + 1 }));
+    }
+
+    // 다음 카드로
+    setTimeout(() => {
+      if (currentIndex + 1 >= flashcardDeck.length) {
+        setCurrentView('result'); // 임시로 퀴즈 결과화면을 같이 쓰거나 별도 처리
+      } else {
+        setCurrentIndex(prev => prev + 1);
+        setIsFlipped(false);
+      }
+    }, 150); // 살짝 애니메이션 대기
+  };
+
+  // ==========================================
+  // [2] 퀴즈 (지필고사 실전) 로직
+  // ==========================================
+  const startQuiz = (type, limit) => {
+    let questions = [];
+    const shuffledData = [...wordData].sort(() => 0.5 - Math.random());
+    const selectedData = limit === 'all' ? shuffledData : shuffledData.slice(0, limit);
+
+    selectedData.forEach(item => {
+      let qType = type;
+      if (type === 'mix') {
+        const r = Math.random();
+        if (r < 0.4) qType = '1';
+        else if (r < 0.7) qType = '2B';
+        else qType = '2C';
+      }
+
+      if (qType === '1') {
+        questions.push({ ...item, qType: '1', questionText: item.meaning, expectedAnswer: item.word });
+      } else if (qType === '2B') {
+        questions.push({ ...item, qType: '2B', questionText: item.word, subText: item.blankQuestion, expectedAnswer: item.blankAnswer });
+      } else if (qType === '2C') {
+        questions.push({ ...item, qType: '2C', questionText: item.word, expectedAnswer: item.meaning });
+      }
+    });
+
+    setQuizQuestions(questions);
+    setCurrentIndex(0);
+    setScore(0);
+    setUserInput("");
+    setFeedback(null);
+    setShowSelfGrade(false);
+    setIncorrectList([]);
+    setCurrentView('quiz');
+  };
+
+  const handleSubmit = (e) => {
+    if (e) e.preventDefault();
+    if (!userInput.trim()) return;
+
+    const currentQ = quizQuestions[currentIndex];
+    if (currentQ.qType === '2C') {
+      setShowSelfGrade(true);
+      return;
+    }
+
+    const isCorrect = userInput.replace(/\s+/g, '') === currentQ.expectedAnswer.replace(/\s+/g, '');
+    if (isCorrect) {
+      setScore(prev => prev + 1);
+      setFeedback({ isCorrect: true, showHint: false });
+      setTimeout(nextQuestion, 1000); 
+    } else {
+      setFeedback({ isCorrect: false, showHint: true, userAns: userInput });
+      // 퀴즈에서 틀려도 플래시카드 오답노트에 자동 연동
+      toggleBookmark(currentQ.word, true); 
+    }
+  };
+
+  const handleWrongNext = () => {
+    const currentQ = quizQuestions[currentIndex];
+    setIncorrectList(prev => [...prev, { ...currentQ, userAnswer: feedback.userAns }]);
+    nextQuestion();
+  };
+
+  const handleOverride = (isCorrect) => {
+    const currentQ = quizQuestions[currentIndex];
+    if (isCorrect) {
+      setScore(prev => prev + 1);
+      toggleBookmark(currentQ.word, false); // 맞다고 우기면 오답노트에서 빼줌
+    } else {
+      setIncorrectList(prev => [...prev, { ...currentQ, userAnswer: userInput }]);
+      toggleBookmark(currentQ.word, true); // 틀렸다고 인정하면 오답노트에 넣음
+    }
+    setShowSelfGrade(false);
+    nextQuestion();
+  };
+
+  const handleAbort = () => {
+    const remaining = quizQuestions.slice(currentIndex);
+    const abortedItems = remaining.map(q => ({ ...q, userAnswer: '중도 포기' }));
+    setIncorrectList(prev => [...prev, ...abortedItems]);
+    setCurrentView('result');
+  };
+
+  const nextQuestion = () => {
+    if (currentIndex + 1 >= quizQuestions.length) {
+      setCurrentView('result');
+    } else {
+      setCurrentIndex(prev => prev + 1);
+      setUserInput("");
+      setFeedback(null);
+      setShowSelfGrade(false);
+    }
+  };
+
+
+  // ==========================================
+  // UI 렌더링 영역
+  // ==========================================
+  
+  const renderMenu = () => (
+    <div className="max-w-3xl mx-auto p-4 sm:p-6 mt-4 sm:mt-10">
+      <div className="text-center mb-8">
+        <h1 className="text-2xl sm:text-3xl font-black text-gray-800 flex items-center justify-center gap-3 tracking-tight">
+          <BookOpen className="text-indigo-600" size={32} />
+          과천외고 한자성어 마스터
+        </h1>
+      </div>
+
+      <div className="space-y-6">
+        {/* [섹션 1] 스마트 암기장 */}
+        <div className="bg-gradient-to-br from-emerald-50 to-teal-50 p-5 rounded-2xl border border-emerald-100 shadow-sm">
+          <div className="flex justify-between items-center mb-4">
+            <h2 className="text-lg sm:text-xl font-bold text-teal-900 flex items-center gap-2">
+              <Layers size={22}/> 스마트 암기장 (플래시카드)
+            </h2>
+            <div className="text-xs bg-teal-100 text-teal-800 px-3 py-1 rounded-full font-bold flex items-center gap-1">
+              <Bookmark size={12}/> 내 오답: {bookmarks.length}개
+            </div>
+          </div>
+          <p className="text-teal-700 text-sm mb-4 bg-white/50 p-3 rounded-lg border border-teal-100">
+            👉 <b>오른쪽</b>으로 넘기면 <b>'아는 단어'</b> (제외)<br/>
+            👈 <b>왼쪽</b>으로 넘기면 <b>'모르는 단어'</b> (오답 노트 저장)
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <button onClick={() => startFlashcard('all')} className="py-3 bg-white hover:bg-teal-50 text-teal-700 rounded-xl font-bold border border-teal-200 shadow-sm transition">
+              전체 암기
+            </button>
+            <button onClick={() => startFlashcard('random', 70)} className="py-3 bg-white hover:bg-teal-50 text-teal-700 rounded-xl font-bold border border-teal-200 shadow-sm transition">
+              랜덤 암기(70제)
+            </button>
+            <button onClick={() => startFlashcard('bookmarks')} className="py-3 bg-teal-600 hover:bg-teal-700 text-white rounded-xl font-bold shadow-md transition relative overflow-hidden group">
+              <span className="relative z-10">오답만 암기</span>
+              {bookmarks.length > 0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-bl-lg font-bold">{bookmarks.length}</span>}
+            </button>
+          </div>
+        </div>
+
+        {/* [섹션 2] 지필고사 훈련 */}
+        <div className="bg-white p-5 rounded-2xl shadow-sm border border-gray-200">
+          <h2 className="text-lg sm:text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
+            <PlayCircle size={22} className="text-indigo-600"/> 지필고사 실전 훈련
+          </h2>
+          <div className="space-y-3">
+            <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
+              <div className="text-sm"><b>유형 1.</b> 뜻 보고 성어 쓰기</div>
+              <div className="flex gap-2">
+                <button onClick={() => startQuiz('1', 50)} className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded text-xs font-bold hover:bg-gray-300">50제</button>
+                <button onClick={() => startQuiz('1', 'all')} className="px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded text-xs font-bold hover:bg-indigo-200">전체</button>
+              </div>
+            </div>
+            <div className="flex justify-between items-center bg-gray-50 p-3 rounded-lg border border-gray-100">
+              <div className="text-sm"><b>유형 2-A.</b> 빈칸 채우기</div>
+              <div className="flex gap-2">
+                <button onClick={() => startQuiz('2B', 50)} className="px-3 py-1.5 bg-gray-200 text-gray-700 rounded text-xs font-bold hover:bg-gray-300">50제</button>
+                <button onClick={() => startQuiz('2B', 'all')} className="px-3 py-1.5 bg-indigo-100 text-indigo-700 rounded text-xs font-bold hover:bg-indigo-200">전체</button>
+              </div>
+            </div>
+            <div className="flex justify-between items-center bg-orange-50 p-3 rounded-lg border border-orange-100">
+              <div className="text-sm text-orange-900"><b>유형 2-B.</b> 실전 전체 서술</div>
+              <div className="flex gap-2">
+                <button onClick={() => startQuiz('2C', 50)} className="px-3 py-1.5 bg-orange-200 text-orange-800 rounded text-xs font-bold hover:bg-orange-300">50제</button>
+                <button onClick={() => startQuiz('2C', 'all')} className="px-3 py-1.5 bg-orange-500 text-white rounded text-xs font-bold hover:bg-orange-600">전체</button>
+              </div>
+            </div>
+          </div>
+          
+          <button 
+            onClick={() => startQuiz('mix', 30)}
+            className="w-full mt-4 py-4 bg-gray-900 hover:bg-black text-white rounded-xl font-bold shadow-md transition flex justify-center items-center gap-2">
+            실전 모의고사 (랜덤 30문제 혼합) <ChevronRight size={18}/>
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderFlashcard = () => {
+    const currentCard = flashcardDeck[currentIndex];
+    
+    // 드래그 거리 기반 스타일 계산
+    const rotate = dragX * 0.05; 
+    const opacity = 1 - Math.abs(dragX) / 500;
+    const isDragging = dragStartX !== null;
+    
+    // 배경색 (오른쪽=초록, 왼쪽=빨강)
+    let cardBg = "bg-white";
+    if (dragX > 50) cardBg = "bg-green-50 border-green-300";
+    else if (dragX < -50) cardBg = "bg-red-50 border-red-300";
+
+    return (
+      <div className="min-h-[80vh] flex flex-col max-w-md mx-auto p-4 relative overflow-hidden touch-none">
+        {/* 상단 프로그레스 */}
+        <div className="flex justify-between items-center mb-6 text-sm font-bold text-gray-400">
+          <button onClick={() => setCurrentView('menu')} className="text-gray-400 hover:text-gray-800 flex items-center"><LogOut size={16} className="mr-1"/> 종료</button>
+          <span>{currentIndex + 1} / {flashcardDeck.length}</span>
+        </div>
+
+        {/* 카드 스와이프 안내 배경 (카드가 움직일 때 보임) */}
+        <div className="absolute inset-0 flex items-center justify-between px-8 z-0 pointer-events-none opacity-50">
+          <div className={`flex flex-col items-center ${dragX < -20 ? 'text-red-500 scale-110' : 'text-gray-300'} transition-transform`}>
+            <MoveLeft size={48} />
+            <span className="font-black mt-2">모름 (저장)</span>
+          </div>
+          <div className={`flex flex-col items-center ${dragX > 20 ? 'text-green-500 scale-110' : 'text-gray-300'} transition-transform`}>
+            <MoveRight size={48} />
+            <span className="font-black mt-2">알음 (패스)</span>
+          </div>
+        </div>
+
+        {/* 실제 플래시카드 */}
+        <div className="flex-1 flex items-center justify-center z-10 perspective-1000">
+          <div 
+            className={`w-full aspect-[3/4] rounded-3xl shadow-2xl border-2 ${isDragging ? 'cursor-grabbing transition-none' : 'cursor-grab transition-transform duration-300 ease-out'} ${cardBg} flex items-center justify-center p-6 select-none relative transform-style-3d`}
+            style={{ 
+              transform: `translateX(${dragX}px) rotate(${rotate}deg) rotateY(${isFlipped ? 180 : 0}deg)`,
+              opacity: isDragging ? opacity : 1
+            }}
+            onMouseDown={handleDragStart}
+            onMouseMove={handleDragMove}
+            onMouseUp={handleDragEnd}
+            onMouseLeave={handleDragEnd}
+            onTouchStart={handleDragStart}
+            onTouchMove={handleDragMove}
+            onTouchEnd={handleDragEnd}
+          >
+            {/* 카드 내용 (앞/뒷면 분리 방지용 CSS 트릭) */}
+            <div className={`absolute inset-0 w-full h-full flex flex-col items-center justify-center p-8 text-center backface-hidden ${isFlipped ? 'opacity-0' : 'opacity-100'}`} style={{ transform: 'rotateY(0deg)', backfaceVisibility: 'hidden' }}>
+              <div className="mb-4 text-indigo-200">
+                <Hand size={32} className="animate-bounce" />
+              </div>
+              <h2 className="text-5xl font-black text-gray-800 tracking-widest mb-4 pointer-events-none">{currentCard.word}</h2>
+              <p className="text-2xl text-gray-400 tracking-[0.5em] pointer-events-none">{currentCard.hanja}</p>
+              <p className="absolute bottom-6 text-xs text-gray-300 font-bold">터치하여 뜻 확인 / 좌우로 밀어 넘기기</p>
+            </div>
+
+            <div className={`absolute inset-0 w-full h-full flex flex-col items-center justify-center p-6 text-center backface-hidden ${isFlipped ? 'opacity-100' : 'opacity-0'}`} style={{ transform: 'rotateY(180deg)', backfaceVisibility: 'hidden' }}>
+              <h3 className="text-xl font-bold text-indigo-900 mb-2">{currentCard.word}</h3>
+              <p className="text-lg text-gray-700 leading-relaxed mb-6 font-medium break-keep">
+                "{currentCard.meaning}"
+              </p>
+              <div className="w-full bg-white/60 p-4 rounded-xl border border-indigo-50">
+                <p className="text-xs font-bold text-indigo-400 mb-1">💡 한자 힌트</p>
+                <p className="text-sm text-gray-600">{currentCard.hint}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 하단 수동 버튼 (마우스 드래그가 불편한 사용자를 위해) */}
+        <div className="mt-8 flex gap-4 z-10">
+          <button onClick={() => { setDragX(-200); setTimeout(() => handleSwipe('left'), 50); }} className="flex-1 py-4 bg-white border-2 border-red-100 text-red-500 rounded-2xl font-black shadow-sm flex justify-center items-center gap-2 hover:bg-red-50">
+            <XCircle size={24}/> 모름
+          </button>
+          <button onClick={() => { setDragX(200); setTimeout(() => handleSwipe('right'), 50); }} className="flex-1 py-4 bg-white border-2 border-green-100 text-green-500 rounded-2xl font-black shadow-sm flex justify-center items-center gap-2 hover:bg-green-50">
+            <CheckCircle size={24}/> 앎
+          </button>
+        </div>
+      </div>
+    );
+  };
+
+  const renderQuiz = () => {
+    const currentQ = quizQuestions[currentIndex];
+    
+    return (
+      <div className="max-w-2xl mx-auto p-4 sm:p-6 bg-white rounded-2xl shadow-xl mt-4 sm:mt-10">
+        <div className="flex justify-between items-end mb-2">
+          <div className="text-sm font-bold text-gray-500">
+            문제 {currentIndex + 1} / {quizQuestions.length} <span className="ml-2 text-indigo-500">(점수: {score})</span>
+          </div>
+          <button onClick={handleAbort} className="text-xs flex items-center gap-1 text-gray-400 hover:text-red-500 transition">
+            <LogOut size={14}/> 중단/채점
+          </button>
+        </div>
+        
+        <div className="w-full bg-gray-200 rounded-full h-2 mb-8">
+          <div className="bg-indigo-600 h-2 rounded-full transition-all duration-300" style={{ width: `${((currentIndex) / quizQuestions.length) * 100}%` }}></div>
+        </div>
+
+        <div className="text-center mb-8">
+          <div className="inline-block px-3 py-1 bg-gray-100 text-gray-600 rounded-full text-xs font-bold mb-4">
+            {currentQ.qType === '1' && "유형 1: 뜻 보고 성어 쓰기"}
+            {currentQ.qType === '2B' && "유형 2-A: 빈칸 단답형"}
+            {currentQ.qType === '2C' && "유형 2-B: 실전 서술형"}
+          </div>
+          
+          {currentQ.qType === '1' ? (
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-800 leading-relaxed break-keep">
+              "{currentQ.questionText}"
+            </h2>
+          ) : (
+            <>
+              <h2 className="text-3xl sm:text-4xl font-black text-indigo-900 tracking-widest mb-2">{currentQ.questionText}</h2>
+              <p className="text-lg text-gray-400 mb-4 tracking-widest">({currentQ.hanja})</p>
+              {currentQ.qType === '2B' && (
+                <div className="bg-blue-50 p-4 rounded-lg text-lg font-medium text-gray-800 leading-relaxed break-keep">
+                  {currentQ.subText}
+                </div>
+              )}
+              {currentQ.qType === '2C' && (
+                <div className="text-gray-500 mb-4 text-sm">
+                  위 한자성어의 뜻풀이를 완성된 문장으로 서술하세요.
+                </div>
+              )}
+            </>
+          )}
+        </div>
+
+        {!showSelfGrade ? (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <input 
+              type="text" 
+              autoFocus
+              className="w-full p-4 border-2 border-gray-300 rounded-xl text-lg text-center focus:border-indigo-500 focus:outline-none transition shadow-sm"
+              placeholder={currentQ.qType === '2C' ? "뜻풀이를 자세히 적어보세요" : "정답을 입력하세요"}
+              value={userInput}
+              onChange={(e) => setUserInput(e.target.value)}
+              disabled={feedback?.isCorrect}
+            />
+            
+            {!feedback && (
+              <button type="submit" className="w-full py-4 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-md transition">
+                {currentQ.qType === '2C' ? "제출하고 정답 확인하기" : "정답 확인"}
+              </button>
+            )}
+          </form>
+        ) : (
+          <div className="space-y-6 animate-fade-in">
+            <div className="p-4 border-2 border-orange-200 bg-orange-50 rounded-xl">
+              <h4 className="text-xs font-bold text-orange-500 mb-1">내 답변</h4>
+              <p className="text-lg font-medium text-gray-800">{userInput}</p>
+            </div>
+            <div className="p-4 border-2 border-green-200 bg-green-50 rounded-xl shadow-inner">
+              <h4 className="text-xs font-bold text-green-600 mb-1">실제 정답</h4>
+              <p className="text-lg font-bold text-green-900 leading-relaxed">{currentQ.expectedAnswer}</p>
+            </div>
+            
+            <div className="pt-4 border-t border-gray-200">
+              <p className="text-center font-bold text-gray-600 mb-4">의미가 일치합니까?</p>
+              <div className="flex gap-4">
+                <button onClick={() => handleOverride(false)} className="flex-1 py-3 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold rounded-xl transition flex justify-center items-center gap-2">
+                  <XCircle size={20}/> 아쉽지만 틀림
+                </button>
+                <button onClick={() => handleOverride(true)} className="flex-1 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-xl shadow-md transition flex justify-center items-center gap-2">
+                  <CheckCircle size={20}/> 정답으로 인정
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {feedback && !feedback.isCorrect && !showSelfGrade && (
+          <div className="mt-6 p-4 bg-red-50 border border-red-200 rounded-xl animate-fade-in">
+            <h3 className="text-red-600 font-bold flex items-center gap-2 mb-2">
+              <XCircle size={20}/> 오답입니다! (자동 즐겨찾기 됨)
+            </h3>
+            <p className="text-gray-800 mb-4 text-lg">
+              정답은 <span className="font-bold text-red-600 bg-red-100 px-2 py-1 rounded">'{currentQ.expectedAnswer}'</span>
+            </p>
+            
+            <div className="bg-white p-4 rounded-lg border border-red-100 mb-4">
+              <h4 className="text-xs font-bold text-indigo-400 mb-1">💡 외우기 힌트</h4>
+              <p className="text-sm text-gray-700 leading-relaxed">{currentQ.hint}</p>
+            </div>
+
+            <button onClick={handleWrongNext} className="w-full py-4 bg-gray-800 hover:bg-gray-900 text-white font-bold rounded-xl transition">
+              다음 문제로 넘어가기
+            </button>
+          </div>
+        )}
+
+        {feedback && feedback.isCorrect && (
+          <div className="mt-6 p-4 bg-green-100 text-green-800 rounded-xl text-center font-bold flex flex-col items-center justify-center gap-2 animate-bounce">
+            <CheckCircle size={32} />
+            정답입니다! 
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const renderResult = () => {
+    // 퀴즈 결과인지, 암기장 결과인지 판별
+    const isFlashcardResult = flashcardDeck.length > 0 && quizQuestions.length === 0;
+
+    return (
+      <div className="max-w-3xl mx-auto p-6 sm:p-8 bg-white rounded-2xl shadow-xl mt-4 sm:mt-10">
+        <div className="text-center mb-8">
+          <div className="w-20 h-20 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <CheckCircle size={40} className="text-indigo-600" />
+          </div>
+          <h2 className="text-2xl sm:text-3xl font-black text-gray-800 mb-2">학습 완료!</h2>
+          
+          {isFlashcardResult ? (
+            <div className="text-gray-600">
+              <p>플래시카드 암기가 끝났습니다.</p>
+              <div className="flex justify-center gap-4 mt-4">
+                <div className="px-4 py-2 bg-green-50 text-green-700 rounded-lg font-bold">아는 단어: {flashcardStats.known}</div>
+                <div className="px-4 py-2 bg-red-50 text-red-700 rounded-lg font-bold">모르는 단어: {flashcardStats.unknown}</div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <p className="text-gray-500 mb-4">총 {quizQuestions.length}문제 중 아래 점수를 기록했습니다.</p>
+              <div className="text-6xl font-black text-indigo-600 mb-6">
+                {score} <span className="text-2xl text-gray-400">/ {quizQuestions.length}</span>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* 퀴즈 오답 노트 영역 */}
+        {!isFlashcardResult && incorrectList.length > 0 && (
+          <div className="mb-8 border-t pt-6">
+            <h3 className="text-lg font-bold text-red-600 mb-4 flex items-center gap-2">
+              <AlertCircle size={20} /> 틀린 문제 복습 (자동으로 암기장에 추가됨)
+            </h3>
+            <div className="space-y-3 max-h-96 overflow-y-auto pr-2">
+              {incorrectList.map((item, idx) => (
+                <div key={idx} className="p-3 bg-gray-50 border border-gray-200 rounded-lg">
+                  <div className="flex justify-between items-start mb-1">
+                    <h4 className="font-bold text-gray-800">
+                      {item.word} <span className="text-xs font-normal text-gray-500">({item.hanja})</span>
+                    </h4>
+                  </div>
+                  <p className="text-sm text-gray-700 bg-white p-2 rounded border border-gray-100">
+                    <span className="font-bold text-indigo-600 mr-2">[정답]</span>{item.expectedAnswer}
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    <span className="font-bold text-red-400 mr-2">[내 답변]</span><span className="line-through">{item.userAnswer || "입력 안함"}</span>
+                  </p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        <button 
+          onClick={() => {
+            setQuizQuestions([]);
+            setFlashcardDeck([]);
+            setCurrentView('menu');
+          }}
+          className="w-full py-4 bg-gray-800 hover:bg-gray-900 text-white rounded-xl font-bold shadow-md transition flex justify-center items-center gap-2">
+          <RefreshCw size={20} /> 메인 메뉴로 돌아가기
+        </button>
+      </div>
+    );
+  };
+
+  return (
+    <div className="min-h-screen bg-gray-50/50 py-4 sm:py-10 px-2 sm:px-4 font-sans selection:bg-indigo-200">
+      <style dangerouslySetInnerHTML={{__html: `
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in { animation: fadeIn 0.3s ease-out forwards; }
+        .perspective-1000 { perspective: 1000px; }
+        .transform-style-3d { transform-style: preserve-3d; }
+        .backface-hidden { backface-visibility: hidden; }
+      `}} />
+      
+      {currentView === 'menu' && renderMenu()}
+      {currentView === 'quiz' && renderQuiz()}
+      {currentView === 'flashcard' && renderFlashcard()}
+      {currentView === 'result' && renderResult()}
+    </div>
+  );
+}
